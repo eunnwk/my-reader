@@ -38,6 +38,31 @@
   .upload-btn:hover {
     background-color: #e0c080;
   }
+
+  .continue-btn {
+    background-color: #4a7c59;
+    color: #e0d5c5;
+    padding: 16px 32px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: bold;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .continue-btn span {
+    font-size: 0.85rem;
+    font-weight: normal;
+    opacity: 0.8;
+  }
+
+  .continue-btn:hover {
+    background-color: #5a9c69;
+  }
   
   /* 공통 툴바 */
   #toolbar {
