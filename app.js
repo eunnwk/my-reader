@@ -9,6 +9,7 @@ const highlightList = document.getElementById('highlight-list');
 
 // ─── 데이터 ───
 let highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
+let currentBook = JSON.parse(localStorage.getItem('currentBook') || 'null');
 
 // ─── 파일 불러오기 ───
 fileInput.addEventListener('change', (e) => {
@@ -19,10 +20,71 @@ fileInput.addEventListener('change', (e) => {
 
   const reader = new FileReader();
   reader.onload = (e) => {
-    content.textContent = e.target.result;
+    const text = e.target.result;
+    content.textContent = text;
+
+    // 책 정보 저장
+    currentBook = {
+      title: file.name,
+      content: text,
+      scrollPosition: 0
+    };
+    saveCurrentBook();
+
     showScreen(readerScreen);
+    applyHighlights();
   };
   reader.readAsText(file, 'UTF-8');
+});
+
+// ─── 책 정보 저장/불러오기 ───
+function saveCurrentBook() {
+  localStorage.setItem('currentBook', JSON.stringify(currentBook));
+}
+
+function loadSavedBook() {
+  if (!currentBook) return false;
+
+  bookTitle.textContent = currentBook.title;
+  content.textContent = currentBook.content;
+  showScreen(readerScreen);
+  applyHighlights();
+
+  // 저장된 스크롤 위치로 이동 (DOM 렌더링 후)
+  requestAnimationFrame(() => {
+    window.scrollTo(0, currentBook.scrollPosition);
+  });
+
+  return true;
+}
+
+// ─── 이어서 읽기 버튼 ───
+const continueBtn = document.getElementById('continue-btn');
+const continueBookTitle = document.getElementById('continue-book-title');
+
+function showContinueButton() {
+  if (currentBook) {
+    continueBookTitle.textContent = currentBook.title;
+    continueBtn.classList.remove('hidden');
+  } else {
+    continueBtn.classList.add('hidden');
+  }
+}
+
+continueBtn.addEventListener('click', () => {
+  loadSavedBook();
+});
+
+// ─── 스크롤 위치 저장 ───
+let scrollTimeout;
+window.addEventListener('scroll', () => {
+  if (!currentBook || readerScreen.classList.contains('hidden')) return;
+
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    currentBook.scrollPosition = window.scrollY;
+    saveCurrentBook();
+  }, 300);
 });
 
 // ─── 텍스트 선택 → 하이라이트 ───
@@ -95,6 +157,9 @@ function shareHighlight(id) {
 
 // ─── 뒤로가기 ───
 document.getElementById('back-btn').addEventListener('click', () => {
+  // 저장된 책 정보 삭제
+  currentBook = null;
+  localStorage.removeItem('currentBook');
   showScreen(uploadScreen);
 });
 
@@ -109,3 +174,6 @@ function showScreen(screen) {
   highlightScreen.classList.add('hidden');
   screen.classList.remove('hidden');
 }
+
+// ─── 초기화: 이어서 읽기 버튼 표시 ───
+showContinueButton();
