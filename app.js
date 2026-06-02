@@ -10,6 +10,7 @@ const highlightList = document.getElementById('highlight-list');
 // ─── 데이터 ───
 let highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
 let currentBook = JSON.parse(localStorage.getItem('currentBook') || 'null');
+let isMarkdown = false;
 
 // ─── 파일 불러오기 ───
 fileInput.addEventListener('change', (e) => {
@@ -21,18 +22,27 @@ fileInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    content.textContent = text;
+    isMarkdown = file.name.endsWith('.md');
+
+    if (isMarkdown) {
+      content.innerHTML = marked.parse(text);
+    } else {
+      content.textContent = text;
+    }
 
     // 책 정보 저장
     currentBook = {
       title: file.name,
       content: text,
-      scrollPosition: 0
+      scrollPosition: 0,
+      isMarkdown: isMarkdown
     };
     saveCurrentBook();
 
     showScreen(readerScreen);
-    applyHighlights();
+    if (!isMarkdown) {
+      applyHighlights();
+    }
   };
   reader.readAsText(file, 'UTF-8');
 });
@@ -46,9 +56,16 @@ function loadSavedBook() {
   if (!currentBook) return false;
 
   bookTitle.textContent = currentBook.title;
-  content.textContent = currentBook.content;
+  isMarkdown = currentBook.isMarkdown || false;
+
+  if (isMarkdown) {
+    content.innerHTML = marked.parse(currentBook.content);
+  } else {
+    content.textContent = currentBook.content;
+    applyHighlights();
+  }
+
   showScreen(readerScreen);
-  applyHighlights();
 
   // 저장된 스크롤 위치로 이동 (DOM 렌더링 후)
   requestAnimationFrame(() => {

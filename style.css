@@ -142,3 +142,63 @@
   .hidden {
     display: none;
   }
+
+  /* 마크다운 스타일 */
+  #content h1, #content h2, #content h3, #content h4 {
+    color: #c8a96e;
+    margin: 1.5em 0 0.5em;
+  }
+
+  #content h1 { font-size: 1.8rem; }
+  #content h2 { font-size: 1.5rem; }
+  #content h3 { font-size: 1.3rem; }
+
+  #content p {
+    margin: 1em 0;
+  }
+
+  #content code {
+    background-color: #2a2a2a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+  }
+
+  #content pre {
+    background-color: #2a2a2a;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+
+  #content pre code {
+    padding: 0;
+    background: none;
+  }
+
+  #content blockquote {
+    border-left: 4px solid #c8a96e;
+    padding-left: 16px;
+    margin: 1em 0;
+    color: #a09080;
+  }
+
+  #content ul, #content ol {
+    margin: 1em 0;
+    padding-left: 2em;
+  }
+
+  #content li {
+    margin: 0.5em 0;
+  }
+
+  #content a {
+    color: #c8a96e;
+  }
+
+  #content hr {
+    border: none;
+    border-top: 1px solid #3a3a3a;
+    margin: 2em 0;
+  }

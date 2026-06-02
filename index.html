@@ -16,9 +16,9 @@
       <span id="continue-book-title"></span>
     </button>
     <label for="file-input" class="upload-btn">
-      TXT 파일 불러오기
+      TXT / MD 파일 불러오기
     </label>
-    <input type="file" id="file-input" accept=".txt" hidden>
+    <input type="file" id="file-input" accept=".txt,.md" hidden>
   </div>
 
   <!-- 책 읽기 화면 -->
@@ -40,6 +40,7 @@
     <div id="highlight-list"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
