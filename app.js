@@ -1,15 +1,20 @@
 // ─── 화면 요소 ───
 const uploadScreen = document.getElementById('upload-screen');
+const libraryScreen = document.getElementById('library-screen');
 const readerScreen = document.getElementById('reader-screen');
 const highlightScreen = document.getElementById('highlight-screen');
 const fileInput = document.getElementById('file-input');
 const content = document.getElementById('content');
 const bookTitle = document.getElementById('book-title');
 const highlightList = document.getElementById('highlight-list');
+const libraryList = document.getElementById('library-list');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
 
 // ─── 데이터 ───
 let highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
-let currentBook = JSON.parse(localStorage.getItem('currentBook') || 'null');
+let library = JSON.parse(localStorage.getItem('library') || '[]');
+let currentBook = null;
 let isMarkdown = false;
 
 // ─── 파일 불러오기 ───
@@ -17,80 +22,119 @@ fileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  bookTitle.textContent = file.name;
-
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    isMarkdown = file.name.endsWith('.md');
+    const isMd = file.name.endsWith('.md');
 
-    if (isMarkdown) {
-      content.innerHTML = marked.parse(text);
+    const existingIndex = library.findIndex(b => b.title === file.name);
+    if (existingIndex !== -1) {
+      currentBook = library[existingIndex];
+      currentBook.content = text;
+      currentBook.isMarkdown = isMd;
     } else {
-      content.textContent = text;
+      currentBook = {
+        id: Date.now(),
+        title: file.name,
+        content: text,
+        scrollPosition: 0,
+        isMarkdown: isMd,
+        addedDate: new Date().toLocaleDateString('ko-KR')
+      };
+      library.push(currentBook);
     }
+    saveLibrary();
 
-    // 책 정보 저장
-    currentBook = {
-      title: file.name,
-      content: text,
-      scrollPosition: 0,
-      isMarkdown: isMarkdown
-    };
-    saveCurrentBook();
-
-    showScreen(readerScreen);
-    if (!isMarkdown) {
-      applyHighlights();
-    }
+    openBook(currentBook);
   };
   reader.readAsText(file, 'UTF-8');
 });
 
-// ─── 책 정보 저장/불러오기 ───
-function saveCurrentBook() {
-  localStorage.setItem('currentBook', JSON.stringify(currentBook));
+// ─── 서재 저장/불러오기 ───
+function saveLibrary() {
+  localStorage.setItem('library', JSON.stringify(library));
 }
 
-function loadSavedBook() {
-  if (!currentBook) return false;
-
-  bookTitle.textContent = currentBook.title;
-  isMarkdown = currentBook.isMarkdown || false;
+function openBook(book) {
+  currentBook = book;
+  bookTitle.textContent = book.title;
+  isMarkdown = book.isMarkdown || false;
 
   if (isMarkdown) {
-    content.innerHTML = marked.parse(currentBook.content);
+    content.innerHTML = marked.parse(book.content);
   } else {
-    content.textContent = currentBook.content;
+    content.textContent = book.content;
     applyHighlights();
   }
 
   showScreen(readerScreen);
 
-  // 저장된 스크롤 위치로 이동 (DOM 렌더링 후)
   requestAnimationFrame(() => {
-    window.scrollTo(0, currentBook.scrollPosition);
+    window.scrollTo(0, book.scrollPosition || 0);
+    updateProgress();
   });
-
-  return true;
 }
 
-// ─── 이어서 읽기 버튼 ───
-const continueBtn = document.getElementById('continue-btn');
-const continueBookTitle = document.getElementById('continue-book-title');
-
-function showContinueButton() {
-  if (currentBook) {
-    continueBookTitle.textContent = currentBook.title;
-    continueBtn.classList.remove('hidden');
-  } else {
-    continueBtn.classList.add('hidden');
-  }
-}
-
-continueBtn.addEventListener('click', () => {
-  loadSavedBook();
+// ─── 내 서재 버튼 ───
+document.getElementById('library-btn').addEventListener('click', () => {
+  renderLibrary();
+  showScreen(libraryScreen);
 });
+
+function renderLibrary() {
+  if (library.length === 0) {
+    libraryList.innerHTML = '<p style="color:#888; text-align:center; margin-top:40px;">아직 저장된 책이 없어요</p>';
+    return;
+  }
+
+  libraryList.innerHTML = library.map(book => {
+    const progress = calculateProgress(book);
+    return `
+    <div class="library-item" onclick="openBookById(${book.id})">
+      <div class="library-item-title">${book.title}</div>
+      <div class="library-item-meta">추가: ${book.addedDate}</div>
+      <div class="library-progress-bar">
+        <div class="library-progress-fill" style="width: ${progress}%"></div>
+      </div>
+      <div class="library-progress-text">${progress}% 읽음</div>
+      <button class="delete-book-btn" onclick="deleteBook(event, ${book.id})">삭제</button>
+    </div>
+  `;
+  }).join('');
+}
+
+function calculateProgress(book) {
+  if (!book.content || !book.scrollPosition) return 0;
+  const lineHeight = 35;
+  const totalHeight = book.content.split('\n').length * lineHeight;
+  const viewportHeight = window.innerHeight;
+  const maxScroll = Math.max(totalHeight - viewportHeight, 1);
+  const progress = Math.min(Math.round((book.scrollPosition / maxScroll) * 100), 100);
+  return progress;
+}
+
+function openBookById(id) {
+  const book = library.find(b => b.id === id);
+  if (book) openBook(book);
+}
+
+function deleteBook(event, id) {
+  event.stopPropagation();
+  if (!confirm('이 책을 삭제할까요?')) return;
+  library = library.filter(b => b.id !== id);
+  saveLibrary();
+  renderLibrary();
+}
+
+// ─── 진도바 업데이트 ───
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? Math.min(Math.round((scrollTop / docHeight) * 100), 100) : 0;
+
+  progressFill.style.width = progress + '%';
+  progressText.textContent = progress + '%';
+}
 
 // ─── 스크롤 위치 저장 ───
 let scrollTimeout;
@@ -100,8 +144,10 @@ window.addEventListener('scroll', () => {
   clearTimeout(scrollTimeout);
   scrollTimeout = setTimeout(() => {
     currentBook.scrollPosition = window.scrollY;
-    saveCurrentBook();
+    saveLibrary();
   }, 300);
+
+  updateProgress();
 });
 
 // ─── 텍스트 선택 → 하이라이트 ───
@@ -113,7 +159,6 @@ content.addEventListener('mouseup', () => {
   const confirmed = confirm(`하이라이트 추가할까요?\n\n"${selectedText.slice(0, 80)}..."`);
   if (!confirmed) return;
 
-  // 데이터 저장
   highlights.push({
     id: Date.now(),
     text: selectedText,
@@ -122,7 +167,6 @@ content.addEventListener('mouseup', () => {
   });
   localStorage.setItem('highlights', JSON.stringify(highlights));
 
-  // 화면에 표시
   applyHighlights();
   selection.removeAllRanges();
 });
@@ -165,7 +209,6 @@ function shareHighlight(id) {
   const h = highlights.find(h => h.id == id);
   if (!h) return;
 
-  const text = `📖 ${h.book}\n\n"${h.text}"\n\n— My Reader`;
   const twitterText = encodeURIComponent(`"${h.text}"\n\n📖 ${h.book}`);
   const twitterUrl = `https://twitter.com/intent/tweet?text=${twitterText}`;
 
@@ -174,23 +217,24 @@ function shareHighlight(id) {
 
 // ─── 뒤로가기 ───
 document.getElementById('back-btn').addEventListener('click', () => {
-  // 저장된 책 정보 삭제
   currentBook = null;
-  localStorage.removeItem('currentBook');
-  showScreen(uploadScreen);
+  renderLibrary();
+  showScreen(libraryScreen);
 });
 
 document.getElementById('back-from-highlight').addEventListener('click', () => {
   showScreen(readerScreen);
 });
 
+document.getElementById('back-from-library').addEventListener('click', () => {
+  showScreen(uploadScreen);
+});
+
 // ─── 화면 전환 ───
 function showScreen(screen) {
   uploadScreen.classList.add('hidden');
+  libraryScreen.classList.add('hidden');
   readerScreen.classList.add('hidden');
   highlightScreen.classList.add('hidden');
   screen.classList.remove('hidden');
 }
-
-// ─── 초기화: 이어서 읽기 버튼 표시 ───
-showContinueButton();

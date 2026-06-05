@@ -11,9 +11,8 @@
   <!-- 파일 업로드 화면 -->
   <div id="upload-screen">
     <h1>📖 My Reader</h1>
-    <button id="continue-btn" class="continue-btn hidden">
-      📚 이어서 읽기
-      <span id="continue-book-title"></span>
+    <button id="library-btn" class="library-btn">
+      📚 내 서재
     </button>
     <label for="file-input" class="upload-btn">
       TXT / MD 파일 불러오기
@@ -21,12 +20,26 @@
     <input type="file" id="file-input" accept=".txt,.md" hidden>
   </div>
 
+  <!-- 내 서재 화면 -->
+  <div id="library-screen" class="hidden">
+    <div id="toolbar">
+      <button id="back-from-library">← 홈</button>
+      <span>내 서재</span>
+      <span></span>
+    </div>
+    <div id="library-list"></div>
+  </div>
+
   <!-- 책 읽기 화면 -->
   <div id="reader-screen" class="hidden">
     <div id="toolbar">
-      <button id="back-btn">← 목록</button>
+      <button id="back-btn">← 서재</button>
       <span id="book-title"></span>
       <button id="highlight-list-btn">🖍 하이라이트</button>
+    </div>
+    <div id="progress-bar">
+      <div id="progress-fill"></div>
+      <span id="progress-text">0%</span>
     </div>
     <div id="content"></div>
   </div>
@@ -36,6 +49,7 @@
     <div id="toolbar">
       <button id="back-from-highlight">← 돌아가기</button>
       <span>하이라이트 목록</span>
+      <span></span>
     </div>
     <div id="highlight-list"></div>
   </div>

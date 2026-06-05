@@ -39,7 +39,7 @@
     background-color: #e0c080;
   }
 
-  .continue-btn {
+  .library-btn {
     background-color: #4a7c59;
     color: #e0d5c5;
     padding: 16px 32px;
@@ -48,19 +48,9 @@
     cursor: pointer;
     font-weight: bold;
     border: none;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
   }
 
-  .continue-btn span {
-    font-size: 0.85rem;
-    font-weight: normal;
-    opacity: 0.8;
-  }
-
-  .continue-btn:hover {
+  .library-btn:hover {
     background-color: #5a9c69;
   }
   
@@ -91,6 +81,100 @@
     color: #1a1a1a;
   }
   
+  /* 진도바 */
+  #progress-bar {
+    height: 24px;
+    background-color: #2a2a2a;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  #progress-fill {
+    height: 100%;
+    background-color: #c8a96e;
+    width: 0%;
+    transition: width 0.2s;
+  }
+
+  #progress-text {
+    position: absolute;
+    right: 12px;
+    font-size: 0.75rem;
+    color: #e0d5c5;
+  }
+
+  /* 서재 화면 */
+  #library-list {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .library-item {
+    background-color: #2a2a2a;
+    border-left: 4px solid #c8a96e;
+    padding: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+  }
+
+  .library-item:hover {
+    background-color: #333;
+  }
+
+  .library-item-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+  }
+
+  .library-item-meta {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 10px;
+  }
+
+  .library-progress-bar {
+    height: 6px;
+    background-color: #1a1a1a;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .library-progress-fill {
+    height: 100%;
+    background-color: #c8a96e;
+  }
+
+  .library-progress-text {
+    font-size: 0.75rem;
+    color: #c8a96e;
+  }
+
+  .delete-book-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: 1px solid #666;
+    color: #666;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .delete-book-btn:hover {
+    border-color: #c85050;
+    color: #c85050;
+  }
+
   /* 읽기 화면 */
   #content {
     max-width: 680px;
