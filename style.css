@@ -53,6 +53,28 @@
   .library-btn:hover {
     background-color: #5a9c69;
   }
+
+  .folder-btn {
+    background-color: transparent;
+    color: #888;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    border: 1px solid #444;
+  }
+
+  .folder-btn:hover {
+    border-color: #c8a96e;
+    color: #c8a96e;
+  }
+
+  .folder-status {
+    font-size: 0.8rem;
+    color: #666;
+    text-align: center;
+    max-width: 300px;
+  }
   
   /* 공통 툴바 */
   #toolbar {
