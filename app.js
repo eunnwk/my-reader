@@ -2,14 +2,19 @@
 const uploadScreen = document.getElementById('upload-screen');
 const readerScreen = document.getElementById('reader-screen');
 const highlightScreen = document.getElementById('highlight-screen');
+const libraryScreen = document.getElementById('library-screen');
 const fileInput = document.getElementById('file-input');
 const content = document.getElementById('content');
 const bookTitle = document.getElementById('book-title');
 const highlightList = document.getElementById('highlight-list');
+const libraryList = document.getElementById('library-list');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
 
 // ─── 데이터 ───
 let highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
-let currentBook = JSON.parse(localStorage.getItem('currentBook') || 'null');
+let library = JSON.parse(localStorage.getItem('library') || '[]');
+let currentBookId = null;
 let isMarkdown = false;
 
 // ─── 파일 불러오기 ───
@@ -17,90 +22,150 @@ fileInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  bookTitle.textContent = file.name;
-
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
-    isMarkdown = file.name.endsWith('.md');
+    const isMd = file.name.endsWith('.md');
 
-    if (isMarkdown) {
-      content.innerHTML = marked.parse(text);
+    const existingBook = library.find(b => b.title === file.name);
+
+    if (existingBook) {
+      existingBook.content = text;
+      existingBook.isMarkdown = isMd;
+      currentBookId = existingBook.id;
     } else {
-      content.textContent = text;
+      const newBook = {
+        id: Date.now(),
+        title: file.name,
+        content: text,
+        scrollPosition: 0,
+        progress: 0,
+        isMarkdown: isMd,
+        addedDate: new Date().toLocaleDateString('ko-KR')
+      };
+      library.push(newBook);
+      currentBookId = newBook.id;
     }
 
-    // 책 정보 저장
-    currentBook = {
-      title: file.name,
-      content: text,
-      scrollPosition: 0,
-      isMarkdown: isMarkdown
-    };
-    saveCurrentBook();
-
-    showScreen(readerScreen);
-    if (!isMarkdown) {
-      applyHighlights();
-    }
+    saveLibrary();
+    loadBook(currentBookId);
   };
   reader.readAsText(file, 'UTF-8');
 });
 
-// ─── 책 정보 저장/불러오기 ───
-function saveCurrentBook() {
-  localStorage.setItem('currentBook', JSON.stringify(currentBook));
+// ─── 서재 저장/불러오기 ───
+function saveLibrary() {
+  localStorage.setItem('library', JSON.stringify(library));
 }
 
-function loadSavedBook() {
-  if (!currentBook) return false;
+function loadBook(bookId) {
+  const book = library.find(b => b.id === bookId);
+  if (!book) return false;
 
-  bookTitle.textContent = currentBook.title;
-  isMarkdown = currentBook.isMarkdown || false;
+  currentBookId = bookId;
+  bookTitle.textContent = book.title;
+  isMarkdown = book.isMarkdown || false;
 
   if (isMarkdown) {
-    content.innerHTML = marked.parse(currentBook.content);
+    content.innerHTML = marked.parse(book.content);
   } else {
-    content.textContent = currentBook.content;
+    content.textContent = book.content;
     applyHighlights();
   }
 
   showScreen(readerScreen);
 
-  // 저장된 스크롤 위치로 이동 (DOM 렌더링 후)
   requestAnimationFrame(() => {
-    window.scrollTo(0, currentBook.scrollPosition);
+    window.scrollTo(0, book.scrollPosition);
+    updateProgress();
   });
 
   return true;
 }
 
-// ─── 이어서 읽기 버튼 ───
-const continueBtn = document.getElementById('continue-btn');
-const continueBookTitle = document.getElementById('continue-book-title');
+// ─── 내 서재 버튼 ───
+const libraryBtn = document.getElementById('library-btn');
+const libraryCount = document.getElementById('library-count');
 
-function showContinueButton() {
-  if (currentBook) {
-    continueBookTitle.textContent = currentBook.title;
-    continueBtn.classList.remove('hidden');
+function showLibraryButton() {
+  if (library.length > 0) {
+    libraryCount.textContent = `${library.length}권의 책`;
+    libraryBtn.classList.remove('hidden');
   } else {
-    continueBtn.classList.add('hidden');
+    libraryBtn.classList.add('hidden');
   }
 }
 
-continueBtn.addEventListener('click', () => {
-  loadSavedBook();
+libraryBtn.addEventListener('click', () => {
+  renderLibraryList();
+  showScreen(libraryScreen);
 });
+
+// ─── 서재 목록 렌더링 ───
+function renderLibraryList() {
+  if (library.length === 0) {
+    libraryList.innerHTML = '<p style="color:#888; text-align:center; margin-top:40px;">아직 저장된 책이 없어요</p>';
+    return;
+  }
+
+  libraryList.innerHTML = library.map(book => `
+    <div class="library-item" onclick="loadBook(${book.id})">
+      <div class="library-item-title">${book.title}</div>
+      <div class="library-item-info">
+        <span>${book.addedDate || '날짜 없음'}</span>
+        <div class="library-item-progress">
+          <div class="library-progress-bar">
+            <div class="library-progress-fill" style="width: ${book.progress || 0}%"></div>
+          </div>
+          <span>${book.progress || 0}%</span>
+          <button class="library-item-delete" onclick="event.stopPropagation(); deleteBook(${book.id})">삭제</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── 책 삭제 ───
+function deleteBook(bookId) {
+  if (!confirm('이 책을 삭제할까요?')) return;
+
+  library = library.filter(b => b.id !== bookId);
+  saveLibrary();
+  renderLibraryList();
+  showLibraryButton();
+
+  if (library.length === 0) {
+    showScreen(uploadScreen);
+  }
+}
+
+// ─── 진도 업데이트 ───
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? Math.round((scrollTop / docHeight) * 100) : 0;
+
+  progressFill.style.setProperty('--progress', `${progress}%`);
+  progressText.textContent = `${progress}%`;
+
+  if (currentBookId) {
+    const book = library.find(b => b.id === currentBookId);
+    if (book) {
+      book.progress = progress;
+      book.scrollPosition = scrollTop;
+      saveLibrary();
+    }
+  }
+}
 
 // ─── 스크롤 위치 저장 ───
 let scrollTimeout;
 window.addEventListener('scroll', () => {
-  if (!currentBook || readerScreen.classList.contains('hidden')) return;
+  if (!currentBookId || readerScreen.classList.contains('hidden')) return;
 
   clearTimeout(scrollTimeout);
   scrollTimeout = setTimeout(() => {
-    currentBook.scrollPosition = window.scrollY;
-    saveCurrentBook();
+    updateProgress();
   }, 300);
 });
 
@@ -113,7 +178,6 @@ content.addEventListener('mouseup', () => {
   const confirmed = confirm(`하이라이트 추가할까요?\n\n"${selectedText.slice(0, 80)}..."`);
   if (!confirmed) return;
 
-  // 데이터 저장
   highlights.push({
     id: Date.now(),
     text: selectedText,
@@ -122,7 +186,6 @@ content.addEventListener('mouseup', () => {
   });
   localStorage.setItem('highlights', JSON.stringify(highlights));
 
-  // 화면에 표시
   applyHighlights();
   selection.removeAllRanges();
 });
@@ -165,7 +228,6 @@ function shareHighlight(id) {
   const h = highlights.find(h => h.id == id);
   if (!h) return;
 
-  const text = `📖 ${h.book}\n\n"${h.text}"\n\n— My Reader`;
   const twitterText = encodeURIComponent(`"${h.text}"\n\n📖 ${h.book}`);
   const twitterUrl = `https://twitter.com/intent/tweet?text=${twitterText}`;
 
@@ -174,14 +236,17 @@ function shareHighlight(id) {
 
 // ─── 뒤로가기 ───
 document.getElementById('back-btn').addEventListener('click', () => {
-  // 저장된 책 정보 삭제
-  currentBook = null;
-  localStorage.removeItem('currentBook');
-  showScreen(uploadScreen);
+  currentBookId = null;
+  renderLibraryList();
+  showScreen(libraryScreen);
 });
 
 document.getElementById('back-from-highlight').addEventListener('click', () => {
   showScreen(readerScreen);
+});
+
+document.getElementById('back-from-library').addEventListener('click', () => {
+  showScreen(uploadScreen);
 });
 
 // ─── 화면 전환 ───
@@ -189,8 +254,9 @@ function showScreen(screen) {
   uploadScreen.classList.add('hidden');
   readerScreen.classList.add('hidden');
   highlightScreen.classList.add('hidden');
+  libraryScreen.classList.add('hidden');
   screen.classList.remove('hidden');
 }
 
-// ─── 초기화: 이어서 읽기 버튼 표시 ───
-showContinueButton();
+// ─── 초기화 ───
+showLibraryButton();
