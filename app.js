@@ -16,16 +16,99 @@ let highlights = JSON.parse(localStorage.getItem('highlights') || '[]');
 let library = JSON.parse(localStorage.getItem('library') || '[]');
 let currentBook = null;
 let isMarkdown = false;
+let directoryHandle = null;
+
+// ─── File System Access API 지원 여부 ───
+const supportsFileSystemAccess = 'showDirectoryPicker' in window;
+
+// ─── 저장 폴더 설정 ───
+const setFolderBtn = document.getElementById('set-folder-btn');
+const folderStatus = document.getElementById('folder-status');
+
+if (!supportsFileSystemAccess) {
+  setFolderBtn.style.display = 'none';
+  folderStatus.textContent = '이 브라우저는 폴더 저장을 지원하지 않습니다 (localStorage 사용)';
+}
+
+setFolderBtn.addEventListener('click', async () => {
+  try {
+    directoryHandle = await window.showDirectoryPicker({
+      mode: 'readwrite'
+    });
+    folderStatus.textContent = '저장 폴더: ' + directoryHandle.name;
+    folderStatus.style.color = '#c8a96e';
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      folderStatus.textContent = '폴더 선택 실패';
+      folderStatus.style.color = '#ff6b6b';
+    }
+  }
+});
+
+// ─── 파일을 폴더에 저장 ───
+async function saveFileToFolder(filename, content) {
+  if (!directoryHandle) return false;
+
+  try {
+    const fileHandle = await directoryHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+    return true;
+  } catch (e) {
+    console.error('파일 저장 실패:', e);
+    return false;
+  }
+}
+
+// ─── 폴더에서 파일 목록 불러오기 ───
+async function loadFilesFromFolder() {
+  if (!directoryHandle) return [];
+
+  const files = [];
+  try {
+    for await (const entry of directoryHandle.values()) {
+      if (entry.kind === 'file' && (entry.name.endsWith('.txt') || entry.name.endsWith('.md'))) {
+        files.push(entry.name);
+      }
+    }
+  } catch (e) {
+    console.error('폴더 읽기 실패:', e);
+  }
+  return files;
+}
+
+// ─── 폴더에서 파일 읽기 ───
+async function readFileFromFolder(filename) {
+  if (!directoryHandle) return null;
+
+  try {
+    const fileHandle = await directoryHandle.getFileHandle(filename);
+    const file = await fileHandle.getFile();
+    return await file.text();
+  } catch (e) {
+    console.error('파일 읽기 실패:', e);
+    return null;
+  }
+}
 
 // ─── 파일 불러오기 ───
-fileInput.addEventListener('change', (e) => {
+fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     const text = e.target.result;
     const isMd = file.name.endsWith('.md');
+
+    // File System Access API로 폴더에 저장 시도
+    if (directoryHandle) {
+      const saved = await saveFileToFolder(file.name, text);
+      if (saved) {
+        folderStatus.textContent = '저장됨: ' + file.name;
+      }
+    }
 
     const existingIndex = library.findIndex(b => b.title === file.name);
     if (existingIndex !== -1) {
@@ -114,7 +197,19 @@ async function openSharedBook(filename) {
 
 async function renderLibrary() {
   const sharedBooks = await loadSharedBooks();
+  const folderFiles = await loadFilesFromFolder();
   let html = '';
+
+  // 폴더에서 불러온 책
+  if (folderFiles.length > 0) {
+    html += '<div class="library-section-title">📁 폴더 책 (' + directoryHandle.name + ')</div>';
+    html += folderFiles.map(filename => `
+      <div class="library-item" onclick="openFolderBook('${filename}')">
+        <div class="library-item-title">${filename}</div>
+        <div class="library-item-meta">폴더에서 불러옴</div>
+      </div>
+    `).join('');
+  }
 
   if (sharedBooks.length > 0) {
     html += '<div class="library-section-title">공용 책</div>';
@@ -149,6 +244,26 @@ async function renderLibrary() {
   }
 
   libraryList.innerHTML = html;
+}
+
+// ─── 폴더에서 책 열기 ───
+async function openFolderBook(filename) {
+  const content = await readFileFromFolder(filename);
+  if (!content) {
+    alert('파일을 읽을 수 없습니다.');
+    return;
+  }
+
+  const isMd = filename.endsWith('.md');
+  currentBook = {
+    id: 'folder-' + filename,
+    title: filename,
+    content: content,
+    scrollPosition: 0,
+    isMarkdown: isMd,
+    isFolder: true
+  };
+  openBook(currentBook);
 }
 
 function calculateProgress(book) {
