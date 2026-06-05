@@ -81,26 +81,74 @@ document.getElementById('library-btn').addEventListener('click', () => {
   showScreen(libraryScreen);
 });
 
-function renderLibrary() {
-  if (library.length === 0) {
-    libraryList.innerHTML = '<p style="color:#888; text-align:center; margin-top:40px;">아직 저장된 책이 없어요</p>';
-    return;
+// ─── 공용 책 불러오기 (books 폴더) ───
+async function loadSharedBooks() {
+  try {
+    const res = await fetch('books/book-list.json');
+    const data = await res.json();
+    return data.books || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function openSharedBook(filename) {
+  try {
+    const res = await fetch('books/' + filename);
+    const text = await res.text();
+    const isMd = filename.endsWith('.md');
+
+    currentBook = {
+      id: 'shared-' + filename,
+      title: filename,
+      content: text,
+      scrollPosition: 0,
+      isMarkdown: isMd,
+      isShared: true
+    };
+    openBook(currentBook);
+  } catch (e) {
+    alert('파일을 불러올 수 없습니다.');
+  }
+}
+
+async function renderLibrary() {
+  const sharedBooks = await loadSharedBooks();
+  let html = '';
+
+  if (sharedBooks.length > 0) {
+    html += '<div class="library-section-title">공용 책</div>';
+    html += sharedBooks.map(filename => `
+      <div class="library-item" onclick="openSharedBook('${filename}')">
+        <div class="library-item-title">${filename}</div>
+        <div class="library-item-meta">공용 서재</div>
+      </div>
+    `).join('');
   }
 
-  libraryList.innerHTML = library.map(book => {
-    const progress = calculateProgress(book);
-    return `
-    <div class="library-item" onclick="openBookById(${book.id})">
-      <div class="library-item-title">${book.title}</div>
-      <div class="library-item-meta">추가: ${book.addedDate}</div>
-      <div class="library-progress-bar">
-        <div class="library-progress-fill" style="width: ${progress}%"></div>
+  if (library.length > 0) {
+    html += '<div class="library-section-title">내 책</div>';
+    html += library.map(book => {
+      const progress = calculateProgress(book);
+      return `
+      <div class="library-item" onclick="openBookById(${book.id})">
+        <div class="library-item-title">${book.title}</div>
+        <div class="library-item-meta">추가: ${book.addedDate}</div>
+        <div class="library-progress-bar">
+          <div class="library-progress-fill" style="width: ${progress}%"></div>
+        </div>
+        <div class="library-progress-text">${progress}% 읽음</div>
+        <button class="delete-book-btn" onclick="deleteBook(event, ${book.id})">삭제</button>
       </div>
-      <div class="library-progress-text">${progress}% 읽음</div>
-      <button class="delete-book-btn" onclick="deleteBook(event, ${book.id})">삭제</button>
-    </div>
-  `;
-  }).join('');
+    `;
+    }).join('');
+  }
+
+  if (html === '') {
+    html = '<p style="color:#888; text-align:center; margin-top:40px;">아직 저장된 책이 없어요</p>';
+  }
+
+  libraryList.innerHTML = html;
 }
 
 function calculateProgress(book) {
