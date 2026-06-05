@@ -157,6 +157,15 @@
     color: #c8a96e;
   }
 
+  .library-section-title {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 16px;
+    margin-bottom: -8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
   .delete-book-btn {
     position: absolute;
     top: 12px;
